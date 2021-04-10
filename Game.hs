@@ -47,9 +47,10 @@ viewModel m = main_ [] [
       ("color", "white"),
       ("height", "100vh"),
       ("display", "grid"),
-      ("grid-template-rows", "auto 1fr")
+      ("grid-template-rows", "auto auto 1fr")
     ]] [
       h1_ [style_ $ Map.singleton "text-align" "center"] [text "Scape!"],
+      p_ [style_ $ Map.singleton "text-align" "center"] [text "Use arrow keys to move."],
       div_ [style_ $ Map.fromList [("display", "flex"), ("align-items", "center"), ("justify-content", "center")]] [
         viewGame m
       ]
