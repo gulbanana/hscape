@@ -2,17 +2,25 @@
 
 module Game (initModel, updateModel, viewModel, Action(NoOp)) where
 
-import Miso
-import Miso.String as MS hiding (replicate, map)
 import qualified Data.Map as Map
+import Miso
+import Miso.String as MS ( MisoString, concat, snoc )
 
-data Action = NoOp
 data Cell = Hidden | Floor | Wall | Player | Enemy
   deriving Eq
-type Model = [[Cell]]
+data Entity = Entity Cell Int Int
+  deriving Eq
+type Model = [Entity]
 
-initModel :: [[Cell]]
-initModel = replicate 24 $ replicate 80 Floor
+data Action = NoOp
+
+initModel :: [Entity]
+initModel = [Entity Floor x y | x <- [0..79], y <- [1..23]] ++ 
+            [Entity Wall x 0 | x <- [0..78]] ++
+            [Entity Wall 79 y | y <- [0..22]] ++
+            [Entity Wall x 23 | x <- [1..79]] ++
+            [Entity Wall 0 y | y <- [1..23]] ++
+            [Entity Player 40 12]
 
 updateModel :: Action -> Model -> Effect Action Model
 updateModel act = noEff
@@ -29,7 +37,7 @@ viewModel m = main_ [] [
       ("display", "grid"),
       ("grid-template-rows", "auto 1fr")
     ]] [
-      h1_ [] [text "Scape!"],
+      h1_ [style_ $ Map.singleton "text-align" "center"] [text "Scape!"],
       div_ [style_ $ Map.fromList [("display", "flex"), ("align-items", "center"), ("justify-content", "center")]] [
         viewGame m
       ]
@@ -38,10 +46,22 @@ viewModel m = main_ [] [
 
 viewGame :: Model -> View Action
 viewGame m = pre_ [style_ $ Map.fromList [("font-family", "'Cutive Mono', monospace"), ("font-size", "20px")]] [
-    text $ render m
+    text $ render $ layout m
   ]
 
-render :: Model -> MisoString
+-- TODO: apply the obvious optimisation, creating hidden cells only when no entity is present
+layout :: Model -> [[Cell]]
+layout = foldl place base
+  where base = replicate 24 (replicate 80 Hidden)
+        place cs (Entity c x y) = replace2 y x c cs
+        replace1 i x xs = 
+          take i xs ++ (x : drop (i+1) xs)
+        replace2 j i x xs =
+          let row_to_replace_in = xs !! j
+              modified_row = replace1 i x row_to_replace_in
+          in replace1 j modified_row xs
+
+render :: [[Cell]] -> MisoString
 render = MS.concat . map (mkLine . renderLine)
   where mkLine = flip snoc '\n'
 
