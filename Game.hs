@@ -12,23 +12,22 @@ import Miso.String as MS ( MisoString, concat, snoc )
 import Data.Function
 import Data.List
 
-data CellType = Hidden | Floor | Wall | Player | Enemy
+data CellType = Hidden | Floor | Wall | Mobile MisoString
   deriving Eq
 data Cell = Cell CellType Int Int
   deriving Eq
 data Entity = Room | Tile CellType Int Int
   deriving Eq
-data Mob = Mob Int Int
+data Mob = Mob MisoString Int Int
   deriving Eq
 data Model = Scene {
-  scenePlayerX :: Int,
-  scenePlayerY :: Int,
+  player :: Mob,
   enemies :: [Mob],
   logLines :: [MisoString]
 } deriving Eq
 
 initModel :: Model
-initModel = Scene 40 12 [Mob 1 21, Mob 3 6] []
+initModel = Scene (Mob "player" 40 12) [Mob "dog" 1 21, Mob "dog" 4 6, Mob "dog" 11 2] []
 
 data Action = NoOp
             | Init
@@ -41,7 +40,7 @@ updateModel NoOp m = noEff m
 updateModel Init m@Scene{..} = noEff m {
     logLines = "Welcome to Scape." : logLines
   }
-updateModel (MoveDelta x y) m@Scene{..} = (noEff . step) (exec (MoveTo (scenePlayerX+x) (scenePlayerY+y)) m)
+updateModel (MoveDelta x y) m@Scene { player = (Mob pn px py), .. } = (noEff . step) (exec m (MoveTo player updatePlayer (px+x) (py+y)))
 updateModel Wait m@Scene{..} = (noEff . step) m {
     logLines = "You wait." : logLines
   }
@@ -50,43 +49,42 @@ clamp :: (Ord a) => a -> a -> a -> a
 clamp mn mx = max mn . min mx
 
 step :: Model -> Model
-step m@Scene{..} = m {
-    enemies = map (ai m) enemies
-  }
+step m = foldl ai m mkLenses
+  where mkLenses = [(mkGet i, mkSet i) | i <- [0..length (enemies m) - 1]]
+        mkGet i m' = enemies m'!!i
+        mkSet i m' e' = m' { enemies = take i (enemies m') ++ [e'] ++ drop (i+1) (enemies m')}
 
-ai :: Model -> Mob -> Mob
-ai m@Scene{..} (Mob x y) 
-          | scenePlayerX == cx && scenePlayerY == cy = Mob x y
-          | isJust (findMob m cx cy)                 = Mob x y
-          | otherwise                                = Mob cx cy
-  where gx = x+1
+ai :: Model -> (Model -> Mob, Model -> Mob -> Model) -> Model
+ai m@Scene{..} (get, set) = exec m (MoveTo get set gx gy)
+  where (Mob n x y) = get m
+        gx = x+1
         gy = y
+
+data Command = MoveTo (Model -> Mob) (Model -> Mob -> Model) Int Int
+             | Attack Mob Mob
+
+exec :: Model -> Command -> Model
+exec m@Scene{..} (MoveTo get set gx gy) = target (findMob m gx gy)
+  where (Mob n x y) = get m
+        -- move into empty spaces
+        target Nothing = set m (Mob n cx cy)
+        -- attack enemies by moving into them
+        target (Just e) = exec m (Attack (get m) e)
+        -- ignore moves into walls
         cx = clamp 1 78 gx
         cy = clamp 1 22 gy
-
-data Command = MoveTo Int Int
-             | Attack Mob
-
-exec :: Command -> Model -> Model
-exec (MoveTo x y) m = target (findMob m x y)
-  where target Nothing = m {
-          scenePlayerX = cx,
-          scenePlayerY = cy
-        }
-        -- attack enemies by moving into them
-        target (Just e) = exec (Attack e) m
-        -- ignore moves into walls
-        cx = clamp 1 78 x
-        cy = clamp 1 22 y
-exec (Attack e) m@Scene{..} = m {
-  logLines = "You attack." : logLines
+exec m@Scene{..} (Attack (Mob sn _ _) (Mob dn _ _)) = m {
+  logLines = MS.concat ["The ", sn, " attacks the ", dn, "."] : logLines
 }
 
+updatePlayer :: Model -> Mob -> Model
+updatePlayer m p = m { player = p }
+
 findMob :: Model -> Int -> Int -> Maybe Mob
-findMob m x y = find (mobHasPos x y) (enemies m)
+findMob m x y = find (mobHasPos x y) (player m : enemies m)
 
 mobHasPos :: Int -> Int -> Mob -> Bool
-mobHasPos i j (Mob x y) = x == i && y == j
+mobHasPos i j (Mob n x y) = x == i && y == j
 
 viewModel :: Model -> View Action
 viewModel m = main_ [] [
@@ -105,7 +103,7 @@ viewModel m = main_ [] [
       h1_ [style_ labelStyle] [text "Scape!"],
       p_ [style_ labelStyle] [text "MoveDelta: wasd | 8426 | ↑←↓→", br_ [], text "Wait: spacebar | 5"],
       div_ [style_ $ Map.fromList [("display", "flex"), ("align-items", "center"), ("justify-content", "center")]] [
-        div_ [style_ $ Map.fromList [("display", "grid"), ("grid-template-columns", "1fr auto 1fr"), ("grid-column-gap", "20px")]] [
+        div_ [style_ $ Map.fromList [("display", "grid"), ("grid-template-columns", "1fr auto 1fr"), ("grid-column-gap", "20px"), ("width", "100%")]] [
           div_ [] [],
           viewGame m,
           viewLog m
@@ -115,12 +113,12 @@ viewModel m = main_ [] [
   ]
 
 viewGame :: Model -> View Action
-viewGame Scene{..} = pre_ [style_ $ Map.union monoStyle $ Map.singleton "margin" "0"] [
-    text $ render $ draw $ layout ([Room, Tile Player scenePlayerX scenePlayerY] ++ map viewMob enemies)
+viewGame Scene{player = (Mob pn px py), ..} = pre_ [style_ $ Map.union monoStyle $ Map.singleton "margin" "0"] [
+    text $ render $ draw $ layout ([Room, Tile (Mobile "@") px py] ++ map viewMob enemies)
   ]
 
 viewMob :: Mob -> Entity
-viewMob (Mob x y) = Tile Enemy x y
+viewMob (Mob n x y) = Tile (Mobile "d") x y
 
 layout :: [Entity] -> [Cell]
 layout []        = []
@@ -152,11 +150,10 @@ renderLine :: [CellType] -> MisoString
 renderLine = MS.concat . map renderCell
 
 renderCell :: CellType -> MisoString
-renderCell Hidden = " "
-renderCell Floor  = "."
-renderCell Wall   = "#"
-renderCell Player = "@"
-renderCell Enemy  = "d"
+renderCell Hidden     = " "
+renderCell Floor      = "."
+renderCell Wall       = "#"
+renderCell (Mobile t) = t
 
 viewLog :: Model -> View Action
 viewLog Scene{..} = div_ [style_ $ Map.union monoStyle $ Map.fromList [("height", "552px"), ("overflow", "auto")]]
