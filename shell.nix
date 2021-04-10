@@ -1,4 +1,4 @@
-with (import ./default.nix);
+with (import ./miso.nix);
 let
   reload-script = pkgs.writeScriptBin "reload" ''
       ${pkgs.haskell.packages.ghc865.ghcid}/bin/ghcid -c \
@@ -6,7 +6,7 @@ let
         -T 'Main.main'
 '';
   output-script = pkgs.writeScriptBin "output" ''
-      cd result && wslview bin\\app.jsexe && cd ..
+      cd result && wslview . && cd ..
 '';
 in dev.env.overrideAttrs (old: {
   buildInputs = old.buildInputs ++ [reload-script] ++ [output-script];
