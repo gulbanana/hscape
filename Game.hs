@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
-module Game (initModel, updateModel, viewModel, Action(NoOp)) where
+module Game (initModel, updateModel, viewModel, Action(..)) where
 
 import qualified Data.Map as Map
 import Miso
@@ -17,13 +18,21 @@ data Model = Scene {
   scenePlayerY :: Int
 } deriving Eq
 
-data Action = NoOp
+data Action = Init
+            | KeyDown Arrows
+            | Move Int Int
 
 initModel :: Model
 initModel = Scene 40 12
 
 updateModel :: Action -> Model -> Effect Action Model
-updateModel act = noEff
+updateModel Init m = noEff m
+updateModel (Move x y) (Scene i j) = noEff (Scene (clamp 1 78 (i+x)) (clamp 1 22 (j+y)))
+updateModel (KeyDown as) m = case as of
+  Arrows { .. } -> updateModel (Move arrowX (negate arrowY)) m
+
+clamp :: (Ord a) => a -> a -> a -> a
+clamp mn mx = max mn . min mx
 
 viewModel :: Model -> View Action
 viewModel m = main_ [] [
@@ -51,11 +60,11 @@ viewGame (Scene x y) = pre_ [style_ $ Map.fromList [("font-family", "'Cutive Mon
 
 layout :: [Entity] -> [Cell]
 layout []        = []
-layout (Room:xs) = [Cell Floor x y | x <- [0..79], y <- [1..23]] ++ 
+layout (Room:xs) = [Cell Floor x y | x <- [0..79], y <- [1..23]] ++
                    [Cell Wall x 0 | x <- [0..78]] ++
                    [Cell Wall 79 y | y <- [0..22]] ++
                    [Cell Wall x 23 | x <- [1..79]] ++
-                   [Cell Wall 0 y | y <- [1..23]] ++ 
+                   [Cell Wall 0 y | y <- [1..23]] ++
                    layout xs
 layout (Mob c x y:xs) = Cell c x y : layout xs
 
@@ -64,7 +73,7 @@ draw :: [Cell] -> [[CellType]]
 draw = foldl place base
   where base = replicate 24 (replicate 80 Hidden)
         place cs (Cell c x y) = replace2 y x c cs
-        replace1 i x xs = 
+        replace1 i x xs =
           take i xs ++ (x : drop (i+1) xs)
         replace2 j i x xs =
           let row_to_replace_in = xs !! j

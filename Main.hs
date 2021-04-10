@@ -30,10 +30,10 @@ main :: IO ()
 main = runApp $ startApp App {..}
   where
     model         = initModel
-    initialAction = NoOp
+    initialAction = Init
     update        = updateModel
     view          = viewModel
     events        = defaultEvents
-    subs          = []
+    subs          = [arrowsSub KeyDown]
     mountPoint    = Nothing
     logLevel      = Off
