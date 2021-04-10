@@ -1,4 +1,4 @@
-with (import ./miso.nix);
+with import ./miso.nix;
 let
   reload-script = pkgs.writeScriptBin "reload" ''
       ${pkgs.haskell.packages.ghc865.ghcid}/bin/ghcid -c \
