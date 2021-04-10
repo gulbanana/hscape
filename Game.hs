@@ -14,6 +14,7 @@ updateModel act = noEff
 
 viewModel :: Model -> View Action
 viewModel _ = div_ [] [
+    link_ [rel_ "stylesheet", href_ "modern-normalize.css"],
     div_ [style_ $ Map.fromList [
       ("background", "blue"),
       ("color", "white"),

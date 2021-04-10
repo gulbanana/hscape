@@ -7,16 +7,20 @@ import Miso
 import Game
 
 #ifndef __GHCJS__
-import           Language.Javascript.JSaddle.Warp as JSaddle
-import qualified Network.Wai.Handler.Warp         as Warp
-import           Network.WebSockets
+import qualified Network.Wai.Handler.Warp as Warp
+import Network.WebSockets
+import Network.Wai.Application.Static
+import WaiAppStatic.Types
+import Language.Javascript.JSaddle.Warp
 #endif
 
 #ifndef __GHCJS__
 runApp :: JSM () -> IO ()
-runApp f =
-  Warp.runSettings (Warp.setPort 8080 (Warp.setTimeout 3600 Warp.defaultSettings)) =<<
-    JSaddle.jsaddleOr defaultConnectionOptions (f >> syncPoint) JSaddle.jsaddleApp
+runApp frontend = do
+  app <- jsaddleWithAppOr 
+    defaultConnectionOptions (frontend >> syncPoint) $
+    staticApp $ defaultFileServerSettings "wwwroot"
+  Warp.runSettings (Warp.setPort 8080 (Warp.setTimeout 3600 Warp.defaultSettings)) app
 #else
 runApp :: IO () -> IO ()
 runApp app = app

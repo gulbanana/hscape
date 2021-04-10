@@ -7,11 +7,11 @@ cabal-version:  >= 1.10
 
 executable app
   build-depends:    base, miso, containers
-  if !impl(ghcjs)
-    build-depends:
-        jsaddle, jsaddle-warp, transformers, warp, websockets
+  if impl(ghcjs)
+    ghc-options:    -dedupe
+    cpp-options:    -DGHCJS_BROWSER
+  else
+    build-depends:  jsaddle, jsaddle-warp, transformers, warp, wai-app-static, websockets
   default-language: Haskell2010
-  ghcjs-options:    -dedupe
   main-is:          Main.hs
   other-modules:    Game
-  
