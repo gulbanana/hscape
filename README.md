@@ -16,14 +16,10 @@ setup
 
 development
 -----------
-`nix-build -A dev` builds with GHC and JSaddle
-
-`nix-shell --run reload` will use the alias defined in `shell.nix` to hot-reload using GHCID
+`nix-shell` defines aliases `reload` for hot-reload serving and `output` for easy access to the build products
 
 for working HLS in vscode, run in nix-shell or use Nix Environment Selector and pick `shell.nix`
 
-release build
--------------
-`nix-build -A release` builds with GHCJS
-
-`result/` is a symlink into the nix store! `wslview` inside it to get your output
+deployment
+----------
+`nix-build` builds with GHCJS and performs post-processing
