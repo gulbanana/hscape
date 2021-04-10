@@ -5,6 +5,9 @@ let
         '${pkgs.haskell.packages.ghc865.cabal-install}/bin/cabal new-repl exe:app' \
         -T 'Main.main'
 '';
+  output-script = pkgs.writeScriptBin "output" ''
+      cd result && wslview bin\\app.jsexe && cd ..
+'';
 in dev.env.overrideAttrs (old: {
-  buildInputs = old.buildInputs ++ [reload-script];
+  buildInputs = old.buildInputs ++ [reload-script] ++ [output-script];
 })
