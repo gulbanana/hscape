@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Game (initModel, updateModel, viewModel, Action(..)) where
 
@@ -8,6 +9,7 @@ import qualified Data.Set as Set
 import Data.Maybe
 import Miso
 import Miso.String as MS ( MisoString, concat, snoc )
+import Data.Function
 
 data CellType = Hidden | Floor | Wall | Player | Enemy
   deriving Eq
@@ -17,23 +19,33 @@ data Entity = Room | Mob CellType Int Int
   deriving Eq
 data Model = Scene {
   scenePlayerX :: Int,
-  scenePlayerY :: Int
+  scenePlayerY :: Int,
+  sceneEnemyX :: Int,
+  sceneEnemyY :: Int
 } deriving Eq
 
 initModel :: Model
-initModel = Scene 40 12
-        
+initModel = Scene 40 12 1 22
+
 data Action = Init
             | Move Int Int
             | Wait
 
 updateModel :: Action -> Model -> Effect Action Model
 updateModel Init m = noEff m
-updateModel (Move x y) (Scene i j) = noEff (Scene (clamp 1 78 (i+x)) (clamp 1 22 (j+y)))
-updateModel Wait m = noEff m
+updateModel (Move x y) m@Scene{..} = (noEff . step) (m {
+    scenePlayerX = clamp 1 78 (scenePlayerX+x), 
+    scenePlayerY = clamp 1 22 (scenePlayerY+y)
+  })
+updateModel Wait m = (noEff . step) m
 
 clamp :: (Ord a) => a -> a -> a -> a
 clamp mn mx = max mn . min mx
+
+step :: Model -> Model
+step m@Scene{..} = m {
+    sceneEnemyX = clamp 1 78 (sceneEnemyX+1)
+  }
 
 viewModel :: Model -> View Action
 viewModel m = main_ [] [
@@ -60,8 +72,8 @@ viewModel m = main_ [] [
 labelAttr = style_ $ Map.fromList [("text-align", "center"), ("user-select", "none")]
 
 viewGame :: Model -> View Action
-viewGame (Scene x y) = pre_ [style_ $ Map.fromList [("font-family", "'Cutive Mono', monospace"), ("font-size", "20px")]] [
-    text $ render $ draw $ layout [Room, Mob Player x y]
+viewGame Scene{..} = pre_ [style_ $ Map.fromList [("font-family", "'Cutive Mono', monospace"), ("font-size", "20px")]] [
+    text $ render $ draw $ layout [Room, Mob Player scenePlayerX scenePlayerY, Mob Enemy sceneEnemyX sceneEnemyY]
   ]
 
 layout :: [Entity] -> [Cell]
