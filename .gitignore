@@ -4,5 +4,5 @@
 dist-newstyle/
 .ghc.environment.*
 # nix build products
-result/
+result
 
