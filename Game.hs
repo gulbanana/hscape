@@ -1,10 +1,11 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Game (initModel, updateModel, viewModel, Action(..)) where
 
 import qualified Data.Map as Map
+import qualified Data.Set as Set
+import Data.Maybe
 import Miso
 import Miso.String as MS ( MisoString, concat, snoc )
 
@@ -19,18 +20,17 @@ data Model = Scene {
   scenePlayerY :: Int
 } deriving Eq
 
-data Action = Init
-            | KeyDown Arrows
-            | Move Int Int
-
 initModel :: Model
 initModel = Scene 40 12
+        
+data Action = Init
+            | Move Int Int
+            | Wait
 
 updateModel :: Action -> Model -> Effect Action Model
 updateModel Init m = noEff m
 updateModel (Move x y) (Scene i j) = noEff (Scene (clamp 1 78 (i+x)) (clamp 1 22 (j+y)))
-updateModel (KeyDown as) m = case as of
-  Arrows { .. } -> updateModel (Move arrowX (negate arrowY)) m
+updateModel Wait m = noEff m
 
 clamp :: (Ord a) => a -> a -> a -> a
 clamp mn mx = max mn . min mx
@@ -49,13 +49,15 @@ viewModel m = main_ [] [
       ("display", "grid"),
       ("grid-template-rows", "auto auto 1fr")
     ]] [
-      h1_ [style_ $ Map.singleton "text-align" "center"] [text "Scape!"],
-      p_ [style_ $ Map.singleton "text-align" "center"] [text "Use arrow keys to move."],
+      h1_ [labelAttr] [text "Scape!"],
+      p_ [labelAttr] [text "Move: wasd | 8426 | ↑←↓→", br_ [], text "Wait: spacebar | 5"],
       div_ [style_ $ Map.fromList [("display", "flex"), ("align-items", "center"), ("justify-content", "center")]] [
         viewGame m
       ]
     ]
   ]
+
+labelAttr = style_ $ Map.fromList [("text-align", "center"), ("user-select", "none")]
 
 viewGame :: Model -> View Action
 viewGame (Scene x y) = pre_ [style_ $ Map.fromList [("font-family", "'Cutive Mono', monospace"), ("font-size", "20px")]] [

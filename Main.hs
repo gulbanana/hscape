@@ -5,6 +5,7 @@ module Main(main) where
 
 import Miso
 import Game
+import Input
 
 #ifndef __GHCJS__
 import qualified Network.Wai.Handler.Warp as Warp
@@ -34,6 +35,6 @@ main = runApp $ startApp App {..}
     update        = updateModel
     view          = viewModel
     events        = defaultEvents
-    subs          = [arrowsSub KeyDown]
+    subs          = [controlSub]
     mountPoint    = Nothing
     logLevel      = Off
