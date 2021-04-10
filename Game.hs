@@ -18,8 +18,17 @@ data Cell = Cell CellType Int Int
   deriving Eq
 data Entity = Room | Tile CellType Int Int
   deriving Eq
-data Mob = Mob MisoString Int Int
+
+data AIState = NoWander | WanderRight | WanderLeft
   deriving Eq
+data Mob = Mob {
+  name :: MisoString,
+  sym :: MisoString,
+  x :: Int,
+  y :: Int,
+  state :: AIState
+} deriving Eq
+
 data Model = Scene {
   player :: Mob,
   enemies :: [Mob],
@@ -27,7 +36,7 @@ data Model = Scene {
 } deriving Eq
 
 initModel :: Model
-initModel = Scene (Mob "player" 40 12) [Mob "dog" 1 21, Mob "dog" 4 6, Mob "dog" 11 2] []
+initModel = Scene (Mob "player" "@" 40 12 NoWander) [Mob "dog" "d" 1 21 WanderRight, Mob "wolf" "d" 4 6 WanderLeft, Mob "canine" "d" 11 2 WanderRight] []
 
 data Action = NoOp
             | Init
@@ -40,7 +49,7 @@ updateModel NoOp m = noEff m
 updateModel Init m@Scene{..} = noEff m {
     logLines = "Welcome to Scape." : logLines
   }
-updateModel (MoveDelta x y) m@Scene { player = (Mob pn px py), .. } = (noEff . step) (exec m (MoveTo (player m) updatePlayer (px+x) (py+y)))
+updateModel (MoveDelta x y) m@Scene { player = Mob{x = px, y = py}, .. } = (noEff . step) (exec m (MoveTo (player m) updatePlayer (px+x) (py+y)))
 updateModel Wait m@Scene{..} = (noEff . step) m {
     logLines = "You wait." : logLines
   }
@@ -55,25 +64,35 @@ step m = foldl ai m mkLenses
         mkSet i m' e' = m' { enemies = take i (enemies m') ++ [e'] ++ drop (i+1) (enemies m')}
 
 ai :: Model -> (Mob, Model -> Mob -> Model) -> Model
-ai m@Scene{..} (Mob n x y, set) = exec m (MoveTo (Mob n x y) set gx gy)
-  where gx = x+1
-        gy = y
+ai m@Scene{..} (e@Mob{..}, set)
+  | state == WanderRight && x == 78 = exec m (ChangeDirection e set)
+  | state == WanderRight            = exec m (MoveTo e set (x+1) y)
+  | state == WanderLeft && x == 1   = exec m (ChangeDirection e set)
+  | state == WanderLeft             = exec m (MoveTo e set (x-1) y)
+  | otherwise                       = m
 
 data Command = MoveTo Mob (Model -> Mob -> Model) Int Int
              | Attack Mob Mob
+             | ChangeDirection Mob (Model -> Mob -> Model)
 
 exec :: Model -> Command -> Model
-exec m@Scene{..} (MoveTo (Mob n x y) set gx gy) = target (findMob m gx gy)
+exec m@Scene{..} (MoveTo e@Mob{..} set gx gy) = target (findMob m gx gy)
   where -- move into empty spaces
-        target Nothing = set m (Mob n cx cy)
+        target Nothing = set m e { x = cx, y = cy }
         -- attack enemies by moving into them
-        target (Just e) = exec m (Attack (Mob n x y) e)
+        target (Just e') = exec m (Attack e e')
         -- ignore moves into walls
         cx = clamp 1 78 gx
         cy = clamp 1 22 gy
-exec m@Scene{..} (Attack (Mob sn _ _) (Mob dn _ _)) = m {
+exec m@Scene{..} (Attack Mob{name = sn} Mob{name = dn}) = m {
   logLines = MS.concat ["The ", sn, " attacks the ", dn, "."] : logLines
 }
+exec m@Scene{..} (ChangeDirection e@Mob{..} set) = (set m e { state = reverse state }) {
+  logLines = MS.concat ["The ", name, " turns around."] : logLines
+}
+  where reverse WanderLeft  = WanderRight
+        reverse WanderRight = WanderLeft
+        reverse s           = s
 
 updatePlayer :: Model -> Mob -> Model
 updatePlayer m p = m { player = p }
@@ -82,7 +101,7 @@ findMob :: Model -> Int -> Int -> Maybe Mob
 findMob m x y = find (mobHasPos x y) (player m : enemies m)
 
 mobHasPos :: Int -> Int -> Mob -> Bool
-mobHasPos i j (Mob n x y) = x == i && y == j
+mobHasPos i j Mob{..} = x == i && y == j
 
 viewModel :: Model -> View Action
 viewModel m = main_ [] [
@@ -111,12 +130,12 @@ viewModel m = main_ [] [
   ]
 
 viewGame :: Model -> View Action
-viewGame Scene{player = (Mob pn px py), ..} = pre_ [style_ $ Map.union monoStyle $ Map.singleton "margin" "0"] [
-    text $ render $ draw $ layout ([Room, Tile (Mobile "@") px py] ++ map viewMob enemies)
+viewGame Scene{player = Mob{..}, ..} = pre_ [style_ $ Map.union monoStyle $ Map.singleton "margin" "0"] [
+    text $ render $ draw $ layout ([Room, Tile (Mobile sym) x y] ++ map viewMob enemies)
   ]
 
 viewMob :: Mob -> Entity
-viewMob (Mob n x y) = Tile (Mobile "d") x y
+viewMob Mob{..} = Tile (Mobile sym) x y
 
 layout :: [Entity] -> [Cell]
 layout []        = []
