@@ -21,23 +21,31 @@ data Model = Scene {
   scenePlayerX :: Int,
   scenePlayerY :: Int,
   sceneEnemyX :: Int,
-  sceneEnemyY :: Int
+  sceneEnemyY :: Int,
+  logLines :: [MisoString]
 } deriving Eq
 
 initModel :: Model
-initModel = Scene 40 12 1 22
+initModel = Scene 40 12 1 22 []
 
-data Action = Init
+data Action = NoOp
+            | Init
             | Move Int Int
             | Wait
+            | Log MisoString
 
 updateModel :: Action -> Model -> Effect Action Model
-updateModel Init m = noEff m
-updateModel (Move x y) m@Scene{..} = (noEff . step) (m {
-    scenePlayerX = clamp 1 78 (scenePlayerX+x), 
+updateModel NoOp m = noEff m
+updateModel Init m = noEff m {
+    logLines = "Welcome to Scape." : logLines m
+  }
+updateModel (Move x y) m@Scene{..} = (noEff . step) m {
+    scenePlayerX = clamp 1 78 (scenePlayerX+x),
     scenePlayerY = clamp 1 22 (scenePlayerY+y)
-  })
-updateModel Wait m = (noEff . step) m
+  }
+updateModel Wait m = (noEff . step) m {
+    logLines = "You wait." : logLines m
+  }
 
 clamp :: (Ord a) => a -> a -> a -> a
 clamp mn mx = max mn . min mx
@@ -61,18 +69,20 @@ viewModel m = main_ [] [
       ("display", "grid"),
       ("grid-template-rows", "auto auto 1fr")
     ]] [
-      h1_ [labelAttr] [text "Scape!"],
-      p_ [labelAttr] [text "Move: wasd | 8426 | ↑←↓→", br_ [], text "Wait: spacebar | 5"],
+      h1_ [style_ labelStyle] [text "Scape!"],
+      p_ [style_ labelStyle] [text "Move: wasd | 8426 | ↑←↓→", br_ [], text "Wait: spacebar | 5"],
       div_ [style_ $ Map.fromList [("display", "flex"), ("align-items", "center"), ("justify-content", "center")]] [
-        viewGame m
+        div_ [style_ $ Map.fromList [("display", "grid"), ("grid-template-columns", "1fr auto 1fr"), ("grid-column-gap", "20px")]] [
+          div_ [] [],
+          viewGame m,
+          viewLog m
+        ]
       ]
     ]
   ]
 
-labelAttr = style_ $ Map.fromList [("text-align", "center"), ("user-select", "none")]
-
 viewGame :: Model -> View Action
-viewGame Scene{..} = pre_ [style_ $ Map.fromList [("font-family", "'Cutive Mono', monospace"), ("font-size", "20px")]] [
+viewGame Scene{..} = pre_ [style_ $ Map.union monoStyle $ Map.singleton "margin" "0"] [
     text $ render $ draw $ layout [Room, Mob Player scenePlayerX scenePlayerY, Mob Enemy sceneEnemyX sceneEnemyY]
   ]
 
@@ -111,3 +121,11 @@ renderCell Floor  = "."
 renderCell Wall   = "#"
 renderCell Player = "@"
 renderCell Enemy  = "d"
+
+viewLog :: Model -> View Action
+viewLog Scene{..} = div_ [style_ $ Map.union monoStyle $ Map.fromList [("height", "552px"), ("overflow", "auto")]]
+    $ concatMap (\l -> [text l, br_ []]) logLines
+
+monoStyle = Map.fromList [("font-family", "'Cutive Mono', monospace"), ("font-size", "20px")]
+
+labelStyle = Map.fromList [("text-align", "center"), ("user-select", "none")]

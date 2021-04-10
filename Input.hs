@@ -33,9 +33,9 @@ controls 32  = Just ControlPause
 controls _  = Nothing 
 
 pickIfOne :: [Control] -> Action
-pickIfOne [] = Init
+pickIfOne [] = NoOp
 pickIfOne [x] = pick x
-pickIfOne (x:xs) = Init
+pickIfOne (x:xs) = NoOp
 
 pick :: Control -> Action
 pick ControlLeft = Move (-1) 0
