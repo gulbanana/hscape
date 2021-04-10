@@ -29,11 +29,11 @@ runApp app = app
 main :: IO ()
 main = runApp $ startApp App {..}
   where
-    model  = ()
+    model         = initModel
     initialAction = NoOp
-    update = updateModel
-    view   = viewModel
-    events = defaultEvents
-    subs   = []
-    mountPoint = Nothing
-    logLevel = Off
+    update        = updateModel
+    view          = viewModel
+    events        = defaultEvents
+    subs          = []
+    mountPoint    = Nothing
+    logLevel      = Off
