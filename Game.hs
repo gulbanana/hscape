@@ -6,21 +6,21 @@ import qualified Data.Map as Map
 import Miso
 import Miso.String as MS ( MisoString, concat, snoc )
 
-data Cell = Hidden | Floor | Wall | Player | Enemy
+data CellType = Hidden | Floor | Wall | Player | Enemy
   deriving Eq
-data Entity = Entity Cell Int Int
+data Cell = Cell CellType Int Int
   deriving Eq
-type Model = [Entity]
+data Entity = Room | Mob CellType Int Int
+  deriving Eq
+data Model = Scene {
+  scenePlayerX :: Int,
+  scenePlayerY :: Int
+} deriving Eq
 
 data Action = NoOp
 
-initModel :: [Entity]
-initModel = [Entity Floor x y | x <- [0..79], y <- [1..23]] ++ 
-            [Entity Wall x 0 | x <- [0..78]] ++
-            [Entity Wall 79 y | y <- [0..22]] ++
-            [Entity Wall x 23 | x <- [1..79]] ++
-            [Entity Wall 0 y | y <- [1..23]] ++
-            [Entity Player 40 12]
+initModel :: Model
+initModel = Scene 40 12
 
 updateModel :: Action -> Model -> Effect Action Model
 updateModel act = noEff
@@ -45,15 +45,25 @@ viewModel m = main_ [] [
   ]
 
 viewGame :: Model -> View Action
-viewGame m = pre_ [style_ $ Map.fromList [("font-family", "'Cutive Mono', monospace"), ("font-size", "20px")]] [
-    text $ render $ layout m
+viewGame (Scene x y) = pre_ [style_ $ Map.fromList [("font-family", "'Cutive Mono', monospace"), ("font-size", "20px")]] [
+    text $ render $ draw $ layout [Room, Mob Player x y]
   ]
 
+layout :: [Entity] -> [Cell]
+layout []        = []
+layout (Room:xs) = [Cell Floor x y | x <- [0..79], y <- [1..23]] ++ 
+                   [Cell Wall x 0 | x <- [0..78]] ++
+                   [Cell Wall 79 y | y <- [0..22]] ++
+                   [Cell Wall x 23 | x <- [1..79]] ++
+                   [Cell Wall 0 y | y <- [1..23]] ++ 
+                   layout xs
+layout (Mob c x y:xs) = Cell c x y : layout xs
+
 -- TODO: apply the obvious optimisation, creating hidden cells only when no entity is present
-layout :: Model -> [[Cell]]
-layout = foldl place base
+draw :: [Cell] -> [[CellType]]
+draw = foldl place base
   where base = replicate 24 (replicate 80 Hidden)
-        place cs (Entity c x y) = replace2 y x c cs
+        place cs (Cell c x y) = replace2 y x c cs
         replace1 i x xs = 
           take i xs ++ (x : drop (i+1) xs)
         replace2 j i x xs =
@@ -61,14 +71,14 @@ layout = foldl place base
               modified_row = replace1 i x row_to_replace_in
           in replace1 j modified_row xs
 
-render :: [[Cell]] -> MisoString
+render :: [[CellType]] -> MisoString
 render = MS.concat . map (mkLine . renderLine)
   where mkLine = flip snoc '\n'
 
-renderLine :: [Cell] -> MisoString
+renderLine :: [CellType] -> MisoString
 renderLine = MS.concat . map renderCell
 
-renderCell :: Cell -> MisoString
+renderCell :: CellType -> MisoString
 renderCell Hidden = " "
 renderCell Floor  = "."
 renderCell Wall   = "#"
