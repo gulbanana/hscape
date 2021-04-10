@@ -38,8 +38,8 @@ pickIfOne [x] = pick x
 pickIfOne (x:xs) = NoOp
 
 pick :: Control -> Action
-pick ControlLeft = Move (-1) 0
-pick ControlUp = Move 0 (-1)
-pick ControlDown = Move 0 1
-pick ControlRight = Move 1 0
+pick ControlLeft = MoveDelta (-1) 0
+pick ControlUp = MoveDelta 0 (-1)
+pick ControlDown = MoveDelta 0 1
+pick ControlRight = MoveDelta 1 0
 pick ControlPause = Wait

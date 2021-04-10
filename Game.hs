@@ -10,41 +10,40 @@ import Data.Maybe
 import Miso
 import Miso.String as MS ( MisoString, concat, snoc )
 import Data.Function
+import Data.List
 
 data CellType = Hidden | Floor | Wall | Player | Enemy
   deriving Eq
 data Cell = Cell CellType Int Int
   deriving Eq
-data Entity = Room | Mob CellType Int Int
+data Entity = Room | Tile CellType Int Int
+  deriving Eq
+data Mob = Mob Int Int
   deriving Eq
 data Model = Scene {
   scenePlayerX :: Int,
   scenePlayerY :: Int,
-  sceneEnemyX :: Int,
-  sceneEnemyY :: Int,
+  enemies :: [Mob],
   logLines :: [MisoString]
 } deriving Eq
 
 initModel :: Model
-initModel = Scene 40 12 1 22 []
+initModel = Scene 40 12 [Mob 1 21, Mob 3 6] []
 
 data Action = NoOp
             | Init
-            | Move Int Int
+            | MoveDelta Int Int
             | Wait
             | Log MisoString
 
 updateModel :: Action -> Model -> Effect Action Model
 updateModel NoOp m = noEff m
-updateModel Init m = noEff m {
-    logLines = "Welcome to Scape." : logLines m
+updateModel Init m@Scene{..} = noEff m {
+    logLines = "Welcome to Scape." : logLines
   }
-updateModel (Move x y) m@Scene{..} = (noEff . step) m {
-    scenePlayerX = clamp 1 78 (scenePlayerX+x),
-    scenePlayerY = clamp 1 22 (scenePlayerY+y)
-  }
-updateModel Wait m = (noEff . step) m {
-    logLines = "You wait." : logLines m
+updateModel (MoveDelta x y) m@Scene{..} = (noEff . step) (exec (MoveTo (scenePlayerX+x) (scenePlayerY+y)) m)
+updateModel Wait m@Scene{..} = (noEff . step) m {
+    logLines = "You wait." : logLines
   }
 
 clamp :: (Ord a) => a -> a -> a -> a
@@ -52,8 +51,42 @@ clamp mn mx = max mn . min mx
 
 step :: Model -> Model
 step m@Scene{..} = m {
-    sceneEnemyX = clamp 1 78 (sceneEnemyX+1)
+    enemies = map (ai m) enemies
   }
+
+ai :: Model -> Mob -> Mob
+ai m@Scene{..} (Mob x y) 
+          | scenePlayerX == cx && scenePlayerY == cy = Mob x y
+          | isJust (findMob m cx cy)                 = Mob x y
+          | otherwise                                = Mob cx cy
+  where gx = x+1
+        gy = y
+        cx = clamp 1 78 gx
+        cy = clamp 1 22 gy
+
+data Command = MoveTo Int Int
+             | Attack Mob
+
+exec :: Command -> Model -> Model
+exec (MoveTo x y) m = target (findMob m x y)
+  where target Nothing = m {
+          scenePlayerX = cx,
+          scenePlayerY = cy
+        }
+        -- attack enemies by moving into them
+        target (Just e) = exec (Attack e) m
+        -- ignore moves into walls
+        cx = clamp 1 78 x
+        cy = clamp 1 22 y
+exec (Attack e) m@Scene{..} = m {
+  logLines = "You attack." : logLines
+}
+
+findMob :: Model -> Int -> Int -> Maybe Mob
+findMob m x y = find (mobHasPos x y) (enemies m)
+
+mobHasPos :: Int -> Int -> Mob -> Bool
+mobHasPos i j (Mob x y) = x == i && y == j
 
 viewModel :: Model -> View Action
 viewModel m = main_ [] [
@@ -70,7 +103,7 @@ viewModel m = main_ [] [
       ("grid-template-rows", "auto auto 1fr")
     ]] [
       h1_ [style_ labelStyle] [text "Scape!"],
-      p_ [style_ labelStyle] [text "Move: wasd | 8426 | ↑←↓→", br_ [], text "Wait: spacebar | 5"],
+      p_ [style_ labelStyle] [text "MoveDelta: wasd | 8426 | ↑←↓→", br_ [], text "Wait: spacebar | 5"],
       div_ [style_ $ Map.fromList [("display", "flex"), ("align-items", "center"), ("justify-content", "center")]] [
         div_ [style_ $ Map.fromList [("display", "grid"), ("grid-template-columns", "1fr auto 1fr"), ("grid-column-gap", "20px")]] [
           div_ [] [],
@@ -83,8 +116,11 @@ viewModel m = main_ [] [
 
 viewGame :: Model -> View Action
 viewGame Scene{..} = pre_ [style_ $ Map.union monoStyle $ Map.singleton "margin" "0"] [
-    text $ render $ draw $ layout [Room, Mob Player scenePlayerX scenePlayerY, Mob Enemy sceneEnemyX sceneEnemyY]
+    text $ render $ draw $ layout ([Room, Tile Player scenePlayerX scenePlayerY] ++ map viewMob enemies)
   ]
+
+viewMob :: Mob -> Entity
+viewMob (Mob x y) = Tile Enemy x y
 
 layout :: [Entity] -> [Cell]
 layout []        = []
@@ -94,7 +130,7 @@ layout (Room:xs) = [Cell Floor x y | x <- [0..79], y <- [1..23]] ++
                    [Cell Wall x 23 | x <- [1..79]] ++
                    [Cell Wall 0 y | y <- [1..23]] ++
                    layout xs
-layout (Mob c x y:xs) = Cell c x y : layout xs
+layout (Tile c x y:xs) = Cell c x y : layout xs
 
 -- TODO: apply the obvious optimisation, creating hidden cells only when no entity is present
 draw :: [Cell] -> [[CellType]]
