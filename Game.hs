@@ -40,7 +40,7 @@ updateModel NoOp m = noEff m
 updateModel Init m@Scene{..} = noEff m {
     logLines = "Welcome to Scape." : logLines
   }
-updateModel (MoveDelta x y) m@Scene { player = (Mob pn px py), .. } = (noEff . step) (exec m (MoveTo player updatePlayer (px+x) (py+y)))
+updateModel (MoveDelta x y) m@Scene { player = (Mob pn px py), .. } = (noEff . step) (exec m (MoveTo (player m) updatePlayer (px+x) (py+y)))
 updateModel Wait m@Scene{..} = (noEff . step) m {
     logLines = "You wait." : logLines
   }
@@ -51,25 +51,23 @@ clamp mn mx = max mn . min mx
 step :: Model -> Model
 step m = foldl ai m mkLenses
   where mkLenses = [(mkGet i, mkSet i) | i <- [0..length (enemies m) - 1]]
-        mkGet i m' = enemies m'!!i
+        mkGet i = enemies m!!i
         mkSet i m' e' = m' { enemies = take i (enemies m') ++ [e'] ++ drop (i+1) (enemies m')}
 
-ai :: Model -> (Model -> Mob, Model -> Mob -> Model) -> Model
-ai m@Scene{..} (get, set) = exec m (MoveTo get set gx gy)
-  where (Mob n x y) = get m
-        gx = x+1
+ai :: Model -> (Mob, Model -> Mob -> Model) -> Model
+ai m@Scene{..} (Mob n x y, set) = exec m (MoveTo (Mob n x y) set gx gy)
+  where gx = x+1
         gy = y
 
-data Command = MoveTo (Model -> Mob) (Model -> Mob -> Model) Int Int
+data Command = MoveTo Mob (Model -> Mob -> Model) Int Int
              | Attack Mob Mob
 
 exec :: Model -> Command -> Model
-exec m@Scene{..} (MoveTo get set gx gy) = target (findMob m gx gy)
-  where (Mob n x y) = get m
-        -- move into empty spaces
+exec m@Scene{..} (MoveTo (Mob n x y) set gx gy) = target (findMob m gx gy)
+  where -- move into empty spaces
         target Nothing = set m (Mob n cx cy)
         -- attack enemies by moving into them
-        target (Just e) = exec m (Attack (get m) e)
+        target (Just e) = exec m (Attack (Mob n x y) e)
         -- ignore moves into walls
         cx = clamp 1 78 gx
         cy = clamp 1 22 gy
