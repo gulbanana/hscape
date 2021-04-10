@@ -1,14 +1,10 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE CPP #-}
 
 module Main(main) where
 
-import Control.Monad
-import Control.Monad.IO.Class
 import Miso
-import Miso.String
-import State
+import Game
 
 #ifndef __GHCJS__
 import           Language.Javascript.JSaddle.Warp as JSaddle
@@ -29,17 +25,11 @@ runApp app = app
 main :: IO ()
 main = runApp $ startApp App {..}
   where
-    initialAction = NoOp
     model  = ()
+    initialAction = NoOp
     update = updateModel
     view   = viewModel
     events = defaultEvents
     subs   = []
     mountPoint = Nothing
     logLevel = Off
-
-updateModel :: Action -> Model -> Effect Action Model
-updateModel act = noEff
-
-viewModel :: Model -> View Action
-viewModel _ = p_ [] [text "Hello, world."]
