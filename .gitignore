@@ -1,0 +1,8 @@
+# editor config
+.vscode/
+# cabal build products
+dist-newstyle/
+.ghc.environment.*
+# nix build products
+result/
+
