@@ -1,5 +1,5 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Main(main) where
 

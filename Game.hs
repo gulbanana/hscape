@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -36,9 +37,11 @@ clamp mn mx = max mn . min mx
 
 viewModel :: Model -> View Action
 viewModel m = main_ [] [
+#ifndef __GHCJS__
     link_ [rel_ "preconnect", href_ "https://fonts.gstatic.com"],
     link_ [rel_ "stylesheet", href_ "https://fonts.googleapis.com/css2?family=Cutive+Mono&display=swap"],
     link_ [rel_ "stylesheet", href_ "modern-normalize.css"],
+#endif
     div_ [style_ $ Map.fromList [
       ("background", "blue"),
       ("color", "white"),
