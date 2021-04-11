@@ -5,6 +5,7 @@ module Main(main) where
 
 import Miso
 import Game
+import View
 import Input
 
 #ifndef __GHCJS__
