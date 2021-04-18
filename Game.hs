@@ -2,20 +2,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Game (initModel, updateModel, Mob(..), Model(..), Action(..)) where
+module Game (initModel, updateModel, Model(..), Action(..)) where
 
 import Data.List
-
-data AIState = NoWander | WanderRight | WanderLeft
-  deriving Eq
-
-data Mob = Mob {
-  name :: String,
-  sym :: Char,
-  x :: Int,
-  y :: Int,
-  state :: AIState
-} deriving Eq
+import Mob
 
 data Model = Model {
   player :: Mob,

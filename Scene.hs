@@ -4,6 +4,7 @@
 module Scene (renderMap) where
 
 import Miso.String as MS ( MisoString, concat, snoc, ms )
+import Mob
 import Game
 
 data CellType = Hidden | Floor | Wall | Tile MisoString
