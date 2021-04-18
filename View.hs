@@ -22,19 +22,44 @@ viewModel m = main_ [] [
       ("color", "white"),
       ("height", "100vh"),
       ("display", "grid"),
-      ("grid-template-rows", "auto auto 1fr")
+      ("grid-template-rows", "1fr auto 1fr")
     ]] [
-      h1_ [style_ labelStyle] [text "Scape!"],
-      p_ [style_ labelStyle] [text "MoveDelta: wasd | 8426 | ↑←↓→", br_ [], text "Wait: spacebar | 5"],
-      div_ [style_ $ Map.fromList [("display", "flex"), ("align-items", "center"), ("justify-content", "center")]] [
-        div_ [style_ $ Map.fromList [("display", "grid"), ("grid-template-columns", "1fr auto 1fr"), ("grid-column-gap", "20px"), ("width", "100%")]] [
-          div_ [] [],
-          viewGame m,
-          viewLog m
-        ]
-      ]
+      div_ [] [
+        h1_ [style_ labelStyle] [text "Scape!"],
+        viewControls
+      ],
+      div_ [style_ $ Map.fromList [("display", "grid"), ("grid-template-columns", "1fr auto 1fr"), ("grid-column-gap", "20px"), ("width", "100%")]] [
+        div_ [] [],
+        viewGame m,
+        viewLog m
+      ],
+      div_ [] []
     ]
   ]
+
+viewControls :: View Action
+viewControls = p_ [style_ $ Map.union labelStyle $ Map.fromList [("display", "flex"), ("justify-content", "center")]] [
+    section "MOVE" $ alternatives [
+      moveGrid ('w', 'e', 'd', 'x', 's', 'z', 'a', 'q'), 
+      moveGrid ('k', 'u', 'l', 'n', 'j', 'b', 'h', 'y'), 
+      moveGrid ('8', '9', '6', '3', '2', '1', '4', '7')
+    ],
+    section "WAIT" $ alternatives [text "spacebar", text "5"]
+  ]
+  where section t c = div_ [] [text t, span_ [style_ $ Map.singleton "font-family" "'Cutive Mono', monospace"] [c]]
+        alternatives xs = div_ [style_ $ Map.fromList [
+            ("display", "grid"),
+            ("grid-auto-flow", "column"),
+            ("grid-column-gap", "1px"),
+            ("background", "white")
+          ]] (fmap alternative xs)
+        alternative x = div_ [style_ $ Map.fromList [("background", "blue"), ("padding", "0 1em")]] [x]
+        moveGrid :: (Char, Char, Char, Char, Char, Char, Char, Char) -> View Action
+        moveGrid (n, ne, e, se, s, sw, w, nw) = span_ [] [
+            text $ ms [nw, n, ne], br_ [],
+            text $ ms [w, ' ', e], br_ [],
+            text $ ms [sw, s, se]
+          ]
 
 viewGame :: Model -> View Action
 viewGame m = pre_ [style_ $ Map.union monoStyle $ Map.singleton "margin" "0"] [
