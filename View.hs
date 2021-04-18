@@ -39,7 +39,7 @@ viewModel m = main_ [] [
 
 viewControls :: View Action
 viewControls = p_ [style_ $ Map.union labelStyle $ Map.fromList [("display", "flex"), ("justify-content", "center")]] [
-    section "MOVE" $ alternatives [
+    section "MOVE (shift=run)" $ alternatives [
       moveGrid ('w', 'e', 'd', 'x', 's', 'z', 'a', 'q'), 
       moveGrid ('k', 'u', 'l', 'n', 'j', 'b', 'h', 'y'), 
       moveGrid ('8', '9', '6', '3', '2', '1', '4', '7')

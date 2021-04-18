@@ -16,7 +16,8 @@ data Model = Model {
 -- |a player input
 data Action = NoOp
             | Wait
-            | MoveDelta Int Int
+            | Walk Int Int
+            | Run Int Int
 
 -- |an intent expressed by some mob on its turn
 data Command = SkipTurn Mob
@@ -34,8 +35,10 @@ updateModel :: Action -> Model -> Model
 updateModel NoOp m = m
 updateModel Wait m@Model{..}
   = step $ exec m (SkipTurn player)
-updateModel (MoveDelta x y) m@Model { player = Mob{x = px, y = py}, .. }
+updateModel (Walk x y) m@Model { player = Mob{x = px, y = py}, .. }
   = step $ exec m (MoveTo (player m) updatePlayer (px+x) (py+y))
+updateModel (Run x y) m@Model { player = Mob{x = px, y = py}, .. }
+  = step $ exec m (MoveTo (player m) updatePlayer (px+x*2) (py+y*2))
 
 updatePlayer :: Model -> Mob -> Model
 updatePlayer m p = m { player = p }
