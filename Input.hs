@@ -48,20 +48,13 @@ controls 66  = Just ControlSW
 controls 78  = Just ControlSE
 -- numpad
 controls 97  = Just ControlSW
-controls 35  = Just ControlSW
 controls 98  = Just ControlS
-controls 40  = Just ControlS
 controls 99  = Just ControlSE
-controls 34  = Just ControlSE
 controls 100 = Just ControlW
-controls 37  = Just ControlW
 controls 102 = Just ControlE
-controls 39  = Just ControlE
 controls 103 = Just ControlNW
-controls 36  = Just ControlNW
 controls 104 = Just ControlN
 controls 105 = Just ControlNE
-controls 33  = Just ControlNE
 -- 5, space
 controls 101 = Just ControlPause
 controls 32  = Just ControlPause
