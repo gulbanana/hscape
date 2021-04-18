@@ -3,9 +3,7 @@
 
 module Scene (renderMap) where
 
-import Data.Function
-import Miso
-import Miso.String as MS ( MisoString, concat, snoc )
+import Miso.String as MS ( MisoString, concat, snoc, ms )
 import Game
 
 data CellType = Hidden | Floor | Wall | Tile MisoString
@@ -32,7 +30,7 @@ layoutNode Room =             [Cell Floor x y | x <- [0..79], y <- [1..23]] ++
                               [Cell Wall 79 y | y <- [0..22]] ++
                               [Cell Wall x 23 | x <- [1..79]] ++
                               [Cell Wall 0 y | y <- [1..23]]
-layoutNode (Mobile Mob{..}) = [Cell (Tile sym) x y]
+layoutNode (Mobile Mob{..}) = [Cell (Tile (ms [sym])) x y]
 
 -- TODO: apply the obvious optimisation, creating hidden cells only when no entity is present
 draw :: [Cell] -> [[CellType]]

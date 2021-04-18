@@ -4,8 +4,9 @@
 
 module View (viewModel) where
 
-import qualified Data.Map as Map
+import Data.Map as Map
 import Miso
+import Miso.String
 import Game
 import Scene
 
@@ -40,11 +41,12 @@ viewGame m = pre_ [style_ $ Map.union monoStyle $ Map.singleton "margin" "0"] [
     text $ renderMap m
   ]
 
-
 viewLog :: Model -> View Action
 viewLog Model{..} = div_ [style_ $ Map.union monoStyle $ Map.fromList [("height", "552px"), ("overflow", "auto")]]
-    $ concatMap (\l -> [text l, br_ []]) logLines
+    $ Prelude.concatMap (\l -> [text $ ms l, br_ []]) logLines
 
+monoStyle :: Map MisoString MisoString
 monoStyle = Map.fromList [("font-family", "'Cutive Mono', monospace"), ("font-size", "20px")]
 
+labelStyle :: Map MisoString MisoString
 labelStyle = Map.fromList [("text-align", "center"), ("user-select", "none")]

@@ -4,7 +4,7 @@
 module Main(main) where
 
 import Miso
-import Game
+import Update
 import View
 import Input
 
@@ -12,7 +12,6 @@ import Input
 import qualified Network.Wai.Handler.Warp as Warp
 import Network.WebSockets
 import Network.Wai.Application.Static
-import WaiAppStatic.Types
 import Language.Javascript.JSaddle.Warp
 #endif
 
@@ -32,8 +31,8 @@ main :: IO ()
 main = runApp $ startApp App {..}
   where
     model         = initModel
-    initialAction = Init
-    update        = updateModel
+    initialAction = NoOp
+    update        = updateModel'
     view          = viewModel
     events        = defaultEvents
     subs          = [controlSub]

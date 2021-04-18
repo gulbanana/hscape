@@ -5,15 +5,13 @@
 module Game (initModel, updateModel, Mob(..), Model(..), Action(..)) where
 
 import Data.List
-import Miso
-import Miso.String (MisoString, concat)
 
 data AIState = NoWander | WanderRight | WanderLeft
   deriving Eq
 
 data Mob = Mob {
-  name :: MisoString,
-  sym :: MisoString,
+  name :: String,
+  sym :: Char,
   x :: Int,
   y :: Int,
   state :: AIState
@@ -22,31 +20,32 @@ data Mob = Mob {
 data Model = Model {
   player :: Mob,
   enemies :: [Mob],
-  logLines :: [MisoString]
+  logLines :: [String]
 } deriving Eq
 
+-- |a player input
 data Action = NoOp
-            | Init
-            | MoveDelta Int Int
             | Wait
-            | Log MisoString
+            | MoveDelta Int Int
 
-data Command = MoveTo Mob (Model -> Mob -> Model) Int Int
+-- |an intent expressed by some mob on its turn
+data Command = SkipTurn Mob
+             | MoveTo Mob (Model -> Mob -> Model) Int Int
              | Attack Mob Mob
              | ChangeDirection Mob (Model -> Mob -> Model)
 
 initModel :: Model
-initModel = Model (Mob "player" "@" 40 12 NoWander) [Mob "dog" "d" 1 21 WanderRight, Mob "wolf" "d" 4 6 WanderLeft, Mob "canine" "d" 11 2 WanderRight] []
+initModel = Model
+  (Mob "player" '@' 40 12 NoWander)
+  [Mob "dog" 'd' 1 21 WanderRight, Mob "wolf" 'd' 4 6 WanderLeft, Mob "canine" 'd' 11 2 WanderRight]
+  ["Welcome to Scape."]
 
-updateModel :: Action -> Model -> Effect Action Model
-updateModel NoOp m = noEff m
-updateModel Init m@Model{..} = noEff m {
-    logLines = "Welcome to Scape." : logLines
-  }
-updateModel (MoveDelta x y) m@Model { player = Mob{x = px, y = py}, .. } = (noEff . step) (exec m (MoveTo (player m) updatePlayer (px+x) (py+y)))
-updateModel Wait m@Model{..} = (noEff . step) m {
-    logLines = "You wait." : logLines
-  }
+updateModel :: Action -> Model -> Model
+updateModel NoOp m = m
+updateModel Wait m@Model{..}
+  = step $ exec m (SkipTurn player)
+updateModel (MoveDelta x y) m@Model { player = Mob{x = px, y = py}, .. }
+  = step $ exec m (MoveTo (player m) updatePlayer (px+x) (py+y))
 
 updatePlayer :: Model -> Mob -> Model
 updatePlayer m p = m { player = p }
@@ -66,6 +65,9 @@ ai m@Model{..} (e@Mob{..}, set)
   | otherwise                       = m
 
 exec :: Model -> Command -> Model
+exec m (SkipTurn e@Mob{..})  = if sym /= '@' then m else m {
+    logLines = "You wait." : logLines m
+  }
 exec m@Model{..} (MoveTo e@Mob{..} set gx gy) = target (findMob m gx gy)
   where -- move into empty spaces
         target Nothing = set m e { x = cx, y = cy }
@@ -75,10 +77,10 @@ exec m@Model{..} (MoveTo e@Mob{..} set gx gy) = target (findMob m gx gy)
         cx = clamp 1 78 gx
         cy = clamp 1 22 gy
 exec m@Model{..} (Attack Mob{name = sn} Mob{name = dn}) = m {
-  logLines = Miso.String.concat ["The ", sn, " attacks the ", dn, "."] : logLines
+  logLines = concat ["The ", sn, " attacks the ", dn, "."] : logLines
 }
 exec m@Model{..} (ChangeDirection e@Mob{..} set) = (set m e { state = reverse state }) {
-  logLines = Miso.String.concat ["The ", name, " turns around."] : logLines
+  logLines = concat ["The ", name, " turns around."] : logLines
 }
   where reverse WanderLeft  = WanderRight
         reverse WanderRight = WanderLeft
