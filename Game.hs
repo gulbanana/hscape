@@ -65,7 +65,7 @@ ai m@Model{..} (e@Mob{..}, set)
   | otherwise                       = m
 
 exec :: Model -> Command -> Model
-exec m (SkipTurn e@Mob{..})  = if sym /= '@' then m else m {
+exec m (SkipTurn Mob{..})  = if sym /= '@' then m else m {
     logLines = "You wait." : logLines m
   }
 exec m@Model{..} (MoveTo e@Mob{..} set gx gy) = target (findMob m gx gy)
@@ -79,12 +79,12 @@ exec m@Model{..} (MoveTo e@Mob{..} set gx gy) = target (findMob m gx gy)
 exec m@Model{..} (Attack Mob{name = sn} Mob{name = dn}) = m {
   logLines = concat ["The ", sn, " attacks the ", dn, "."] : logLines
 }
-exec m@Model{..} (ChangeDirection e@Mob{..} set) = (set m e { state = reverse state }) {
+exec m@Model{..} (ChangeDirection e@Mob{..} set) = (set m e { state = rev state }) {
   logLines = concat ["The ", name, " turns around."] : logLines
 }
-  where reverse WanderLeft  = WanderRight
-        reverse WanderRight = WanderLeft
-        reverse s           = s
+  where rev WanderLeft  = WanderRight
+        rev WanderRight = WanderLeft
+        rev s           = s
 
 findMob :: Model -> Int -> Int -> Maybe Mob
 findMob m x y = find (hasPos x y) (player m : enemies m)
